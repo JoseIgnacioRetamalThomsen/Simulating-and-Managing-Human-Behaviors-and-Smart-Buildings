@@ -1,0 +1,32 @@
+package mams;
+
+agent PassiveItemTest extends PassiveMAMSAgent {
+    module System system;
+    module Console console;
+    module HALConverter hal;
+
+    initial !init();
+    
+    rule +!init() {
+        system.trace(true);
+        MAMSAgent::!init();
+        !setupBase();
+        
+        console.println("Setting up test resource");
+        !setupItemResource("test", "mams.Test");
+
+        system.sleep(500);
+
+        console.println("Testing coms with test resource");
+        !get("http://localhost:9000/passive/test", int code, string content);
+        console.println("Code: " + code);
+        console.println("Content: " + content);
+        funct f = hal.toHalFunct(content);
+        console.println("hal funct: "+ f);
+        console.println("raw funct: " + hal.toRawFunct("test", content));
+
+
+//        !setupListSubResource("list", "test", "mams.Test");        
+    }
+
+}

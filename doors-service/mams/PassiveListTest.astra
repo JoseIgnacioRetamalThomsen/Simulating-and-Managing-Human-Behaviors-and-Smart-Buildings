@@ -1,0 +1,28 @@
+package mams;
+
+agent PassiveListTest extends PassiveMAMSAgent {
+    module System system;
+    module Console console;
+
+    initial !init();
+    
+    rule +!init() {
+        system.trace(true);
+        MAMSAgent::!init();
+        !setupBase();
+        
+        console.println("Setting up test list resource");
+        !setupListResource("tests", "mams.Test");
+
+        system.sleep(500);
+
+        console.println("Testing coms with test resource");
+        !post("http://localhost:9000/passive/tests", "{\"name\":\"rem\",\"message\":\"hello\"}", int code, string content);
+        console.println("Code: " + code);
+        console.println("Content: " + content);
+
+
+//        !setupListSubResource("list", "test", "mams.Test");        
+    }
+
+}

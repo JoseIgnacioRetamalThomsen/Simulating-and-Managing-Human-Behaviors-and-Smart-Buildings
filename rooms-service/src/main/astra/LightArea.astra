@@ -1,0 +1,116 @@
+import com.ucd.hyperbuilding.lightservice.Client;
+import com.ucd.hyperbuilding.lightservice.ResponseParser;
+agent LightArea{
+    module System system;
+    module Console console;
+    module Debug debug;
+    module Client client;
+    module ResponseParser parser;
+
+    types mainOntology
+    {
+        formula agentId(string);
+        formula lightAreaUrl(string);
+        formula serverAgent(string);
+        formula queue(string);
+        formula toggleUrl(string);
+        formula subscribeToSensorUrl(string);
+        formula statusUrl(string);
+        formula lightArea_id_url_queueId(string, string, string);
+        formula subscribeToSensorEvent_id_sensorUrl(string , string);
+        formula isPolling(boolean);
+        formula eventRequest();
+        formula event_class_id_type_timeStamp(string , string , string , string);
+        formula agentInArea(int);
+        formula isLighOn(boolean);
+
+    }
+
+    initial isPolling(false);
+    initial isLighOn(false);
+    initial agentInArea(0);
+    rule +!main(list args) 
+    {
+        string agentId = at_index(args, 0, string);
+        string lightAreaUrl = at_index(args, 1, string);
+        string serverAgent  = at_index(args, 2, string);
+        string queue = at_index(args, 3, string);
+        console.println("Creating agent, agentId="+ agentId + ", lightAreaUrl="+ lightAreaUrl+
+        ", serverAgent="+ serverAgent + ", queue=" + queue);
+        +agentId(agentId);
+        +lightAreaUrl(lightAreaUrl);
+        +serverAgent(serverAgent);
+        +queue(queue);
+
+        client.getRequest(lightAreaUrl, int responseCode, string responseBody);
+        parser.subscribeLightArea(responseBody);
+        console.println("thing processed");
+        debug.dumpBeliefs();
+        !initThing();
+        !pullEventIntoBeliefs();
+    }
+
+    rule +!initThing(): agentId(string agentId) & queue(string queueId) & serverAgent(string serverAgentId)
+                         & lightAreaUrl(string url) & subscribeToSensorUrl(string subUrl)
+    {
+        send(request, serverAgentId, lightArea_id_url_queueId(agentId, url, queueId));
+        send(request, serverAgentId, subscribeToSensorEvent_id_sensorUrl(agentId, subUrl));
+    }
+
+    rule +!pullEventIntoBeliefs(): queue(string queueId) & isPolling(false){
+        console.println("Pulling new event...");
+        -+isPolling(true);
+        send(request, queueId, eventRequest());
+    }
+
+    //get new event
+    rule @message(request, string sender,event_class_id_type_timeStamp(string class, string id, string type, string timeStamp)){
+        console.println("new event processing id=" + id + ", type=" + type);
+        !processEvent(type);
+    }
+
+    rule +!processEvent("enter") :agentInArea(int total){
+        -+agentInArea(total + 1);
+        console.println("Enter area");
+                debug.dumpBeliefs();
+        !toggleLight(); 
+    }
+
+ rule +!processEvent("exit") :agentInArea(int total){
+        int newtotal = total -1;
+        if(newtotal < 0){
+            newtotal = 0;
+        }
+        -+agentInArea(newtotal);
+         console.println("exit area");
+        debug.dumpBeliefs();
+        !toggleLight(); 
+    }
+
+    rule +!toggleLight(): isLighOn(true) &  toggleUrl(string url) & agentInArea(int total) & total < 1
+    {
+        console.println("turn light off");
+        client.putRequest(url, "",int responseCode, string response);
+        debug.dumpBeliefs();
+        -+isLighOn(false);
+        -+isPolling(false);
+         !pullEventIntoBeliefs();
+    }
+
+    rule +!toggleLight(): isLighOn(false) &  toggleUrl(string url) &  agentInArea(int total) & total >= 1
+    {
+        console.println("turn light on");
+        client.putRequest(url,"", int responseCode, string response);
+        debug.dumpBeliefs();
+        -+isLighOn(true);
+        -+isPolling(false);
+         !pullEventIntoBeliefs();
+    }
+
+    rule +!toggleLight(){
+        -+isPolling(false);
+         !pullEventIntoBeliefs();
+
+    }
+
+}

@@ -1,0 +1,17 @@
+{
+    "name": "HyperBuilding",
+    "rootNamespace": "",
+    "references": [
+        "GUID:ad57d076086826e4fa24a3166cc75de7",
+        "GUID:907ffd6b51eee4145b68791d43de095f"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,24 @@
+agent Main extends mams.MAMSAgent {
+    module com.ucd.hyperbuilding.ResponseParser parser;
+    module System system;
+    module Console console;
+     module Debug debug;
+
+	rule +!main(list args) {
+		MAMSAgent::!setup();
+        system.createAgent("HumanBase", "HumanBase");
+        system.setMainGoal("HumanBase", ["http://127.0.0.1:8080/hyperbuilding/agentbody","002","X"]);
+        // // debug.dumpBeliefs();
+        // system.createAgent("human2", "DiscoverAgent");
+        // system.setMainGoal("human2", ["http://127.0.0.1:8080/hyperbuilding/agentbody","002","X"]);
+
+        //      system.sleep(6000);
+    
+        // system.createAgent("human3", "DiscoverAgent");
+        // system.setMainGoal("human3", ["http://localhost:8080/agent","X","X"]);
+
+        //      system.sleep(6000);
+    
+    }
+
+}

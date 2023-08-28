@@ -1,0 +1,60 @@
+agent Main {
+    module System system;
+    module Console console;
+    module Debug debug;
+
+    types mainOntology{
+        formula turnistileThing_url(string);
+        formula turnistileAgent_id_url(string, string);
+        formula idCount(int);
+        formula serverAgent(string);
+        formula daoAgent(string);
+    }
+
+    initial idCount(0);
+    initial turnistileThing_url("http://127.0.0.1:8080/hyperbuilding/turnstile/t1");
+    initial turnistileThing_url("http://127.0.0.1:8080/hyperbuilding/turnstile/t2");
+    initial turnistileThing_url("http://127.0.0.1:8080/hyperbuilding/turnstile/t3");
+    initial turnistileThing_url("http://127.0.0.1:8080/hyperbuilding/turnstile/t4");
+
+	rule +!main(list args) {
+        system.sleep(500);
+        !server("ServerAgent");
+        !createDabaseAgent("DAOAgent");
+        !createTurnistileAgents();
+        
+    }
+
+    rule +!server(string serverAgentId){
+        system.createAgent(serverAgentId, "Server");
+        system.setMainGoal(serverAgentId, ["8082"]);
+        +serverAgent(serverAgentId);
+    }
+
+    rule +!createTurnistileAgents(): serverAgent(string serverAgentId) & daoAgent(string daoAgent) {
+        console.println("Create turnistile agents.");
+        
+        foreach(turnistileThing_url(string url) ){
+            query(idCount(int count));
+            string idT = "t" + count;
+            string idTQ = "q" + count;
+            console.println("Create turnistile agent, agentId=" + idT);
+            system.createAgent(idT, "Turnstile");
+            system.createAgent(idTQ, "TunstileQueue");
+            system.setMainGoal(idT, [idT, url, serverAgentId, daoAgent, idTQ]);
+            system.setMainGoal(idTQ, [idTQ, idT, serverAgentId]);
+    
+            +turnistileAgent_id_url(idT, url);
+            -idCount(count);
+            +idCount(count + 1);
+            //debug.dumpBeliefs();
+        }
+    }
+
+
+    rule +!createDabaseAgent(string agentName) {
+         console.println("Create Mock DB");
+         system.createAgent(agentName, "MockDAO");
+         +daoAgent(agentName);
+    }
+}

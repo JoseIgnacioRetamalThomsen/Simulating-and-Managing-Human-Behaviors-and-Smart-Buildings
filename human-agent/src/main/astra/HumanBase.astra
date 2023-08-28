@@ -1,0 +1,164 @@
+import mams.JSONConverter;
+import com.fasterxml.jackson.databind.JsonNode;
+
+agent HumanBase extends mams.MAMSAgent {
+    module Console console;
+    module System system;
+    module Debug debug;
+    module JSONConverter converter;
+    module Math math;
+    module com.ucd.hyperbuilding.ResponseParser parser;
+    module Strings str;
+    module com.ucd.hyperbuilding.Helper helper;
+    module Logic logic;
+    module Prelude prelude;
+    module Functions functions;
+
+
+    types humanBaseOntology {
+        formula bodyBaseUrl_url(string);
+        formula getViewUrl(string);
+        formula moveUrl(string);
+        formula statusUrl(string);
+        formula actionUrl(string);
+        formula move_x_y_isFree_location_haveAction_actions(int, int,boolean, string, boolean, list);
+        formula actualPosition_x_y(int, int);
+        formula actionAvailable(string);
+        formula moveTo_x_y(int, int);
+        formula isUpdating(boolean);
+        formula actualLocation(string);
+        formula action_location_actionName_x_y(string, string, int, int);
+        formula locationIdCounter(int); 
+        formula thereIsANerbyNodeFree(boolean);
+        formula targetReach(boolean);
+    }
+
+    initial locationIdCounter(0);
+    inference thereIsANerbyNodeFree(true):- move_x_y_isFree_location_haveAction_actions(int x, int y , true, string locationInMove, boolean haveAction, list l);
+    inference targetReach(true):-  moveTo_x_y(int targetX,int targetY) & actualPosition_x_y(int actualX, int actualY) & actualX == targetX & actualY == targetY;
+
+	rule +!main(list args) {
+        MAMSAgent::!init();
+        console.println("Creating agent agentUrl=" + at_index(args, 0, string));
+        string createAgentUrl = at_index(args, 0, string);
+        +bodyBaseUrl_url(createAgentUrl);
+        !post(createAgentUrl,"", int resposeCode, string content);
+        console.println("Registration request , responseCode="+ resposeCode);
+        parser.registerAgent(content);
+       // debug.dumpBeliefs();
+        !update(true);
+        wait(isUpdating(false));
+        !makeDecision();
+    }
+
+   rule +!makeDecision(){
+        console.println("moving to (-26,5)");
+        +moveTo_x_y(-26,5);
+        !performAction();
+   }
+ 
+    rule +!moveTargetReach(): moveTo_x_y(int targetX,int targetY){
+        console.println("Target reach. x="+ targetX + ", y=" + targetY);
+        -moveTo_x_y(targetX, targetX);
+    }
+
+    rule +!performAction(): targetReach(true){
+        !moveTargetReach(); 
+    }
+
+    rule +!performAction(): thereIsANerbyNodeFree(true){
+        !moveToNodeWithLowerAngle();     
+    }
+
+    rule +!moveToNodeWithLowerAngle(): moveTo_x_y(int targetX,int targetY) & actualPosition_x_y(int actualX, int actualY) {
+            console.println("Searching for the nearest node with a lower angle relative to x"+ targetX + ", y=" + targetY);
+            helper.getNearNodeWithLowerAngleToTarget(targetX, targetY,actualX, actualY, int x, int y);
+            console.println("Node found, x=" + x + ", y=" + y);
+            !move(x, y);
+    }
+
+    rule +!performAction() {
+        console.println("performAction - No posible move.");
+        system.sleep(2000);
+        debug.dumpBeliefs();
+        !update(true);
+        wait(isUpdating(false));
+        !performAction();
+    }
+
+    rule +!move(int x, int y): getViewUrl(string url) {
+        string postionJson =  "{x:" + x + ",y:" + y +"}";
+        !put(url, postionJson, int code, string content);
+        !checkPutRequest(code);
+    }
+    
+    rule +!checkPutRequest(int responseCode): responseCode == 200{
+        !action("moving");
+    }
+
+    rule +!action("moving"): statusUrl(string url){
+        system.sleep(500);
+        !get(url, int code, string content);
+        !action(content);
+    }
+
+    // no touch the exra " there is a bug!!!!
+    rule +!action("\"moving\""): statusUrl(string baseUrlString){
+        !action("moving");
+    }
+
+    rule +!action("idl"){
+        !update(true);
+        wait(isUpdating(false));
+        !performAction();
+    }
+
+    rule +!action("\"idl\""){
+         !action("idl");
+    }
+
+    rule +!update(true){
+        -isUpdating(false);
+        +isUpdating(true);
+        !Update();
+    }
+
+    rule +!update(false){
+        -isUpdating(true);
+        +isUpdating(false);
+    }
+
+    rule +!Update(){ 
+        !ClearAgentView();
+        !UpdateAgentView(); 
+        !update(false);
+    }
+
+    rule +!UpdateAgentView(): moveUrl(string url){
+        !get(url, int code, string content);
+        parser.processMoves(content);
+        string location = parser.getLocation(content);
+        -+actualLocation(location);
+        debug.dumpBeliefs();
+        system.sleep(500);
+    }
+ 
+    rule +!ClearAgentView(): actualPosition_x_y(int xPos,int yPos){
+        -actualPosition_x_y(xPos, yPos);
+        !ClearAgentView();
+        !clearAvailableActions();
+    }
+
+     rule +!ClearAgentView(){
+        foreach(move_x_y_isFree_location_haveAction_actions(int x, int y, boolean isFree,string location, 
+                 boolean haveAction, list l)) {
+            -move_x_y_isFree_location_haveAction_actions(x,y,isFree,location,haveAction,l);
+        }
+    }
+    
+    rule +!clearAvailableActions(){
+        foreach(actionAvailable(string ac)){
+            -actionAvailable(ac);
+        }
+    }
+}

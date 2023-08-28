@@ -1,0 +1,268 @@
+import mams.JSONConverter;
+import com.fasterxml.jackson.databind.JsonNode;
+
+agent MoveAgent extends DiscoverAgent {
+    module Console console;
+    module System system;
+    module Debug debug;
+    module JSONConverter converter;
+    module Math math;
+    module com.ucd.hyperbuilding.ResponseParser parser;
+    module Strings str;
+    module com.ucd.hyperbuilding.Helper helper;
+    module Logic logic;
+    module Prelude prelude;
+    module Functions functions;
+
+    types MoveOntology {
+        formula property_path(string, string);
+        formula uri(string);
+        formula actionToPerform(string);
+        formula locationsToSearch(list);
+        formula path(list);  
+        formula isPath(boolean);
+        
+    }
+    
+    initial perfomingAction(false);
+
+    initial path(["lobby","room4","sideentrance", "room4","room1","room3", "lobby" ,"reception",
+    "lobby","room4","sideentrance", "room4","room1","room3", "lobby"]);
+    initial isPath(true);
+
+	rule +!main(list args) {
+        console.println("Creating agent agentUrl=" + at_index(args, 0, string));
+        MAMSAgent::!init();
+       // +bodyBaseUrl_url(at_index(args, 0, string));
+        string createAgentUrl = at_index(args, 0, string);
+        console.println("URL=" + createAgentUrl);
+        !post(createAgentUrl,"", int code, string content);
+        console.println(content);
+        parser.registerAgent(content);
+        debug.dumpBeliefs();
+      //  system.sleep(10000);
+        console.println("Setting target to discover building.");
+        +mainTarget_target_isSet("discover", true);
+        !update(true);
+        wait(isUpdating(false));
+        !makeDecision();  
+    }
+
+    rule +!makeDecision(): is("discover")  & ~subTargetGoingToLocations_location(string any) & isPath(true)
+    & path(list pathList){
+    console.println("Following path = " + pathList);
+    !followPath(pathList);
+ 
+   }
+
+   rule +!followPath([string next | list T]) {
+     +subTargetGoingToLocations_location(next);
+     -+path(T);
+    !update(true);
+    wait(isUpdating(false));
+    !makeDecision();
+   }
+
+    rule +!followPath([string next]) : path(list pathList)  {
+        console.println("PATH DONE?");
+        -path(pathList);
+   }
+
+   rule +!makeDecision(): is("discover")  & ~subTargetGoingToLocations_location(string any){
+    console.println("HERE");
+    +subTargetGoingToLocations_location("lobby");
+    !update(true);
+    wait(isUpdating(false));
+    !makeDecision();  
+   }
+
+    rule +!moveTargetReach(): moveTo_x_y(int targetX,int targetY) & actualPosition_x_y(int actualX, int actualY) & is("discover") 
+         & actualLocation(string location) & subTargetGoingToLocations_location(string gointToLocation) & location == gointToLocation{
+        console.println("Target location reached");
+        console.println("targetX=" + targetX + " targetY=" + targetY);
+        console.println("actualX=" + actualX + " actualY=" + actualY);
+        -moveTo_x_y(targetX,targetY);
+        -subTargetGoingToLocations_location(gointToLocation);
+            system.sleep(500);
+        debug.dumpBeliefs();
+        !makeDecision();
+    }
+
+    rule +!moveTargetReach(): moveTo_x_y(int targetX,int targetY) & actualPosition_x_y(int actualX, int actualY) & is("discover")
+                                & actualLocation(string location){
+        console.println("Moving to Location -  Target reached,  location=" + location  + "targetX=" + targetX + " targetY=" + targetY);
+         //system.sleep(500);
+       // debug.dumpBeliefs();
+       !makeDecision();
+     }
+
+ rule +!makeDecision():
+    actualLocation(string location) & actualPosition_x_y(int actualX, int actualY) &
+        subTargetGoingToLocations_location(string gointToLocation) & location == "transit"{
+        console.println("In transit location, goingToLocation="+gointToLocation);
+        boolean isSuperLoop = true; 
+        foreach(subTargetGoingToLocations_location(string subLocation)){
+            if(isSuperLoop == true){
+            boolean isLoop = true;
+            foreach(move_x_y_isFree_location_haveAction_actions(int xM , int yM ,boolean isFreeM, 
+            string locationM, boolean haveActionM, list actionsM)){
+                if(isLoop == true){
+                    console.println("Move found, location="+locationM);
+                    if(str.equal(subLocation,locationM)){
+                        console.println("location= " + locationM);
+                    // debug.dumpBeliefs();
+                     //   system.sleep(500);
+                        -moveTo_x_y(actualX,actualY);
+                        +moveTo_x_y(xM,yM);
+                        !performAction();
+                        isLoop = false;
+                        isSuperLoop = false;
+                    }
+                }
+            }
+            }
+        }
+        
+    }
+
+    //changing location
+    rule +!makeDecision() : moveTo_x_y(int targetX,int targetY) & actualPosition_x_y(int actualX, int actualY) 
+        &targetX == actualX & targetY == actualY &  subTargetGoingToLocations_location(string locationGoingTo) {
+        console.println("Moving to Location - makeDecision, x="+ targetX + ", y=" + targetY);
+      //  -moveTo_x_y(actualX,actualY);
+        query(moveUrl(string moveURL));
+        !get(moveURL, int code, string content);
+        parser.tryFindNodeNotInActualViewButInPossibleMove(content, int xOut, int yOut);
+        console.println("x="+ xOut + ", y="+ yOut);
+       
+            if(xOut==-999){
+             
+                console.println("BEFORE");
+                // debug.dumpBeliefs();
+                system.sleep(500);
+                !performAction("Card_Reader");
+
+            }else{
+
+                console.println("moving x");
+               //  system.sleep(500);
+                -moveTo_x_y(targetX,targetY);
+                +moveTo_x_y(xOut,yOut);
+                !update(true);
+                wait(isUpdating(false));
+                !performAction();
+            }
+        // -moveTo_x_y(actualX,actualY);
+        // !makeDecision();
+    }
+
+
+    rule +!makeDecision(): is("discover")  &  subTargetGoingToLocations_location(string locationGoingTo) 
+        & actualLocation(string location) & locationGoingTo == location{
+            console.println("we are in location = "+ location);
+            -subTargetGoingToLocations_location(locationGoingTo);
+    //         -+subTargetGoingToLocations_location("room3");
+    //         system.sleep(3000);
+    //           !update(true);
+    // wait(isUpdating(false));
+             !makeDecision();  
+        }
+
+// x1
+    rule +!makeDecision(): is("discover")  &  subTargetGoingToLocations_location(string locationGoingTo) 
+    & actualLocation(string location)  & buildingNode_id_label_neightboursId_actions(int id, location, list neighbours, list actions){
+        console.println("Moving to Location - locationGoingTo=" + locationGoingTo);
+     //   system.sleep(500);
+        string edgeActionName = "pathto_" + locationGoingTo;
+        !checkIfLocationIsInActions(actions, locationGoingTo, edgeActionName, -1, id, [-1]);
+    } 
+
+
+    rule +!checkIfLocationIsInActions([action_location_actionName_x_y(string name, string action, int x, int y) | list T], 
+        string targetLocation, string edgeActionName, int fromId, int toId, list locationsids) : action == edgeActionName{
+        console.println(" Moving to Location - Location found, action=" + action);
+        //system.sleep(500);
+        if(fromId == -1){
+            +moveTo_x_y(x,y);
+            !performAction();
+        }else{
+            console.println("Moving to from deeper");
+            query(buildingNode_id_label_neightboursId_actions(fromId, string label, list nids, list actions));
+            query(buildingNode_id_label_neightboursId_actions(toId, string labelTo, list nidsTo, list actionsTo));
+            string edgeActionNameLocal = "pathto_" + labelTo;
+            console.println("edgeActionName=" +edgeActionNameLocal);
+            boolean isLoop = true;
+            forall(funct f : actions){
+                if(isLoop == true){
+                console.println(functions.valueAsString(f,1));
+                if(str.equal(functions.valueAsString(f,1),edgeActionNameLocal)){
+                    console.println("found xxx");
+                    isLoop = false;
+                    +moveTo_x_y(functions.valueAsInt(f,2),functions.valueAsInt(f,3));
+                    +subTargetGoingToLocations_location(labelTo);
+                    !update(true);
+                wait(isUpdating(false));
+                !performAction();
+                }
+                
+            }
+            
+            }
+       }
+        //move to locatuib
+        
+    }
+    //x2
+    rule +!checkIfLocationIsInActions([action_location_actionName_x_y(string name, string action, int x, int y)],
+    string targetLocation, string edgeActionName, int fromId, int toId, list locationsids) : actualLocation(string location) {
+        console.println("Moving to Location - Not foun in near location, locationsids=" + locationsids);
+        query(buildingNode_id_label_neightboursId_actions(int id, location, list nid, list actions));
+        list idsToPas = [];
+        if(prelude.headAsInt(locationsids) == -1){
+            idsToPas = nid;
+        }else{
+            idsToPas = locationsids;
+        }
+        console.println(idsToPas);
+       // +locationsToSearch(idsToPas);
+      //  system.sleep(500);
+        !check(idsToPas,targetLocation, edgeActionName, id, toId, idsToPas);
+      
+
+    }
+
+    rule +!check([int locationId | list locationsIds], string targetLocation, string edgeActionName,int fromId, int toId, list locationsids ){
+        console.println("Searching one deep");
+         query(buildingNode_id_label_neightboursId_actions(locationId, string label, list nids, list actions));
+        console.println("actions found = " +actions);
+        !checkIfLocationIsInActions(actions,targetLocation,edgeActionName, fromId, locationId, locationsIds);
+      //  system.sleep(500);
+    }
+
+    //x2
+     rule +!checkIfLocationIsInActions([action_location_actionName_x_y(string name, string action, int x, int y) | list T], 
+        string targetLocation, string edgeActionName, string fromId, int toId, list locationIds) {
+        console.println("Moving to Location - Serching for location on actions, targetLocation=" + targetLocation + 
+        ", edgeActionName=" + edgeActionName +  ", action=" +action + " locationIds=" + locationIds + " tail=" + T);
+      //  system.sleep(500);
+        !checkIfLocationIsInActions(T, targetLocation, edgeActionName, fromId, toId, locationIds);
+    }
+
+     
+      rule +!performAction(string action): is("discover")  & actionAvailable(string actionAvailable) & action== actionAvailable
+    & actionUrl(string actionURL) & card(string cardId) {
+        console.println("Discovering - Perfoming action, action=" + action);
+        string json1 = "{'code':'"+ cardId + "' , 'action': '"+ action + " '}";
+        !put(actionURL, json1, int code1, string content1);
+        console.println("Card Reader Action Performed, responseCode="+ code1);
+        system.sleep(2000);
+        !update(true);
+        wait(isUpdating(false));
+        !makeDecision();
+    }
+    rule +!performAction("Card_Reader"){
+        !update(true);
+        wait(isUpdating(false));
+        !makeDecision();
+    }
+}

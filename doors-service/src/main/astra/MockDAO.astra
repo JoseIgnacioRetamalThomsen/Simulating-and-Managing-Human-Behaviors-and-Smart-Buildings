@@ -1,0 +1,43 @@
+import com.ucd.hyperbuilding.MockDAOClass;
+agent MockDAO {
+    module System system;
+    module Console console;
+    module Debug debug;
+    module Strings strings;
+    module Math math;
+    module MockDAOClass dao;
+ types mockDAOOntology{
+    formula cardEvent_cardId_turnstileId_timeStamp(string, string, string);
+    formula cardEventResponse_success(boolean);
+    formula senderForResponse(string);
+ }
+
+    rule +!main(list args) {
+        
+    }
+
+
+    rule @message(request, string sender,  cardEvent_cardId_turnstileId_timeStamp(string cardId, 
+    string tid, string timeStamp)){
+        console.println("CHECK ID");
+        +senderForResponse(sender);
+        !checkCard(cardId,tid,timeStamp);
+    }
+
+    rule +!checkCard(string cardId, string tid, string timeStamp): senderForResponse(string sender)
+    & tid == "t1" | tid == "t4"{
+        console.println("check card, sender= " + sender);
+        dao.checkIn(cardId, timeStamp, boolean isAccepted);
+        -senderForResponse(sender);
+        send(request, sender, cardEventResponse_success(isAccepted));
+    }
+
+     rule +!checkCard(string cardId, string tid, string timeStamp): senderForResponse(string sender)
+    & tid == "t3" | tid == "t2"{
+        console.println("check card, sender= " + sender);
+        dao.checkOut(cardId, timeStamp, boolean isAccepted);
+        -senderForResponse(sender);
+        send(request, sender, cardEventResponse_success(isAccepted));
+    }
+
+}

@@ -1,0 +1,69 @@
+
+import com.ucd.hyperbuilding.lightservice.Client;
+import com.ucd.hyperbuilding.lightservice.ResponseParser;
+agent Main {
+    module System system;
+    module Console console;
+    module Debug debug;
+    module Client client;
+    module ResponseParser parser;
+
+    types mainOntology
+    {
+        formula serverAgent(string);
+        formula serverPort(string);
+        formula lightSystemUrl(string);
+        formula lightAreaUrl(string);
+        formula isParsing(boolean);
+        formula idCount(int);
+        formula host(string);
+    }
+
+    initial idCount(1);
+    initial serverPort("8084");
+    initial host("http://localhost:8084");
+    initial lightSystemUrl("http://127.0.0.1:8080/hyperbuilding/rooms");
+    initial isParsing(false);
+
+	rule +!main(list args) {
+        console.println("working");
+        !server("ServerAgent");
+        !registerService();
+        !createLightsControlAgents();              
+    }
+
+   rule +!server(string serverAgentId): serverPort(string port) & host(string hostUrl)
+   {
+        system.createAgent(serverAgentId, "Server");
+        system.setMainGoal(serverAgentId, [port, hostUrl]);
+        +serverAgent(serverAgentId);
+    }
+
+    rule +!registerService(): lightSystemUrl(string url)
+    {
+        console.println("Register service to url="+ url);
+        client.getRequest(url, int responseCode, string response);
+        console.println("register, responseCode=" + responseCode+ ", response=" +response );
+        -+isParsing(true);
+        parser.processMainSystemThing(response);
+        wait(isParsing(false));
+        debug.dumpBeliefs();
+    }
+   
+    rule +!createLightsControlAgents() : serverAgent(string serverAgentId)
+    {
+        console.println("Creating lights controller agents");
+        foreach(lightAreaUrl(string areaUrl)){
+            query(idCount(int count));
+            string lightAgentId = "lightAgent_" + count;
+            string queueAgentId = "queue_" + count;
+            console.println("Creating agentsm lightAgentId=" + lightAgentId + ", queueAgentId=" +queueAgentId );
+            system.createAgent(lightAgentId, "LightArea");
+            system.setMainGoal(lightAgentId, [lightAgentId, areaUrl, serverAgentId, queueAgentId]);
+            system.createAgent(queueAgentId, "Queue");
+            system.setMainGoal(queueAgentId, [queueAgentId, lightAgentId, serverAgentId]);
+            count = count + 1;
+            -+idCount(count);
+        }
+    }
+}

@@ -1,0 +1,55 @@
+import com.ucd.hyperbuilding.lightservice.ServerLink;
+import com.ucd.hyperbuilding.lightservice.Client;
+agent Server {
+        module System system;
+    module Console console;
+    module Debug debug;
+    module ServerLink server;
+     module Client client;
+
+    types serverOntology{
+        formula host(string);
+        formula sensorEndPoint(string);
+        formula lightArea_id_url_queueId(string, string, string);
+        formula subscribeToSensorEvent_id_sensorUrl(string , string);
+             formula event_class_id_type_timeStamp(string , string , string , string);
+    }
+  
+
+    rule +!main(list args) {
+        console.println("Creating agent");
+        string port = at_index(args, 0, string);
+        string hostUrl = at_index(args, 1, string);
+        console.println("Starting Server at port" +  port + ", host=" + hostUrl);
+        +host(hostUrl);
+        server.startServer(port);
+    }
+
+
+    //subscribe light system agent
+    rule @message(request, string sender, lightArea_id_url_queueId(string agentId, string agentUrl, string agentQueueId))
+    {
+        console.println("Adding agent, agentId=" + agentId);
+        +lightArea_id_url_queueId( agentId,  agentUrl,  agentQueueId);
+    }
+
+    //subscribe agent to sensor event
+
+    rule @message(request, string sender , subscribeToSensorEvent_id_sensorUrl(string agenId, string sensorUrl))
+    {
+        console.println("Subscribing agent to sensor event, agentId="+ agenId+ ", senserUrl=" + sensorUrl);
+        query(host(string hostString));
+        string url = hostString + "/sensors/" + agenId;
+        string bodyJson = "{'url':'"+url + "'}";
+        console.println("Listeng on urlJson=" +bodyJson );
+        client.postRequestAsync(sensorUrl, bodyJson);
+    }
+    
+    rule $server.sensorEvent(string agentId, string sensorId, string type, string timeStamp){
+        console.println("Sensor event, agentId=" +agentId );
+        query(lightArea_id_url_queueId(agentId, string url, string queueId));
+        debug.dumpBeliefs();
+        send(request, queueId, event_class_id_type_timeStamp("sensor", sensorId, type, timeStamp));
+    }
+
+}

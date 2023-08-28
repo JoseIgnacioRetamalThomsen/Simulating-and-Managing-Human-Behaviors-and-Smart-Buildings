@@ -1,0 +1,81 @@
+
+import com.ucd.hyperbuilding.ServerLink;
+import com.ucd.hyperbuilding.Client;
+agent Server {
+    module System system;
+    module Console console;
+    module ServerLink server;
+    module Client client;
+
+    types serverOntology{
+        formula turnistileAgent_id_url_queueid(string, string,string);
+        formula cardReader_url(string);
+        formula agentIdToAgentNameAndAgentQueue(string, string,string);
+        formula cardEvent(string);
+        formula subscribeToTurnstileEvents_cardUrl_sensor1Url(string, string);
+        formula host(string);
+        formula cardEventEndPoint(string);
+        formula sensorsEndPoint(string);
+        formula event_class_id_type_timeStamp(string, string, string, string);
+        formula cardEvent_cardId_turnstileId_timeStamp(string, string, string);
+        
+    }
+
+    initial host("http://localhost:8082");
+    initial cardEventEndPoint("/cardevent");
+    initial sensorsEndPoint("/sensors");
+
+    rule +!main(list args) {
+        console.println("Creating agent");
+        string port = at_index(args, 0, string);
+        console.println("Starting Server at port" +  port);
+        server.startServer(port);
+        server.checkStatus();
+    }
+
+    //subscribe agent 
+    rule @message(request, string sender, turnistileAgent_id_url_queueid(string id, string url, string qid)) {
+        console.println("Ading tursntile agents, id=" + id);
+        console.println("sender=" + sender);
+        +turnistileAgent_id_url_queueid(id, url, qid);
+        +agentIdToAgentNameAndAgentQueue(id, sender, qid);
+    }
+
+    // Link a turnstile Agent to a turnistile thing
+    rule @message(request, string sender, 
+        subscribeToTurnstileEvents_cardUrl_sensor1Url(string cardReaderUrl,
+            string sensor1Url) ) {
+        console.println("subscribing to cardReader, cardReaderUrl=" + cardReaderUrl + ", sender=" + sender);
+        query(host(string hostString));
+        query(cardEventEndPoint(string cardEndPointString));
+        query(agentIdToAgentNameAndAgentQueue(string agentID, sender, string agendQueueId));
+        query(sensorsEndPoint(string sensorsEndPoint));
+        string requestBody = "{'url':'" +hostString + cardEndPointString +"/" + agentID + "'}";
+        console.println("Subscribien agent to cardreader sent async, agentId=" + agentID + ", requestBody=" + requestBody);
+        client.postRequestAsync(cardReaderUrl, requestBody);
+        
+
+        console.println("subscribing to sensors sent async, agentId=" + agentID + ", sender=" + sender);
+        string subscribeToSensor1requestBody  = 
+        "{'url':'" + hostString + sensorsEndPoint +"/" + agentID + "'}";
+        client.postRequestAsync(sensor1Url, subscribeToSensor1requestBody);
+      
+    }
+
+    //send card event to turnstyle queu
+    rule $server.cardEvent(string agentID, string cardId, string tid, string timeStamp){
+        console.println("Card event, agentId=" + agentID + ", cardId=" + cardId + ", tid=" + tid +
+         ", timeStamp=" + timeStamp);
+        query(agentIdToAgentNameAndAgentQueue(agentID, string agentName, string queueName));
+        send(request, queueName, cardEvent_cardId_turnstileId_timeStamp(cardId,tid,timeStamp));
+    }
+
+    
+    rule $server.sensorEvent(string agentIdstring,string sensorId, string type, string timeStampSecods){
+       console.println("Sensor Event, agentIdstring=" + agentIdstring + ", sensorId=" + sensorId + 
+         ", type=" + type + ", timeStampSecods=" + timeStampSecods);
+         query(agentIdToAgentNameAndAgentQueue(agentIdstring, string agentName, string agentqueuid));
+        send(request, agentqueuid,
+        event_class_id_type_timeStamp("sensor", sensorId, type, timeStampSecods));
+    }
+}

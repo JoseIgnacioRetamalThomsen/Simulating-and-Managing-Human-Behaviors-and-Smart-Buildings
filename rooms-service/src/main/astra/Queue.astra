@@ -1,0 +1,67 @@
+import com.ucd.hyperbuilding.lightservice.EventsQueue;
+agent Queue{
+    module System system;
+    module Console console;
+    module Debug debug;
+    module Strings strings;
+    module Math math;
+    module EventsQueue queue;
+
+
+    types agentOntology{
+        formula lightAgent(string);
+        formula server(string);
+        formula id(string);
+        formula event_class_id_type_timeStamp(string , string , string , string);
+        formula isUpdatingQueue(boolean);
+        formula eventRequest();
+        formula shouldPush(boolean);
+    }
+
+    initial isUpdatingQueue(false);
+    rule +!main(list args) {
+        string id =  at_index(args, 0, string);
+        string lightAgentId = at_index(args, 1, string);
+        string serverId  = at_index(args, 2, string);
+        console.println("queue agent, id= " + id);
+        +lightAgent(lightAgentId);
+        queue.init();
+    }
+
+    // add event from server 
+    rule @message(request, string sender, event_class_id_type_timeStamp(string class, string id, string type, string timeStamp))
+    {
+        console.println("New event added to queue, class= " + class);
+        -+isUpdatingQueue(true);
+        queue.AddEvent(class, id, type, timeStamp);
+        wait(isUpdatingQueue(false));
+        debug.dumpBeliefs();
+        !push();
+    }
+
+    //poll event 
+    rule @message(request, string sender, eventRequest()){
+        -+shouldPush(true);
+        console.println("Event requested");
+    }
+
+    rule +!push(): shouldPush(true) & event_class_id_type_timeStamp(string class, string id, string type, string timeStamp)
+                    & lightAgent(string lightAgentId)
+    {
+        console.println("pushing event");
+        -+shouldPush(false);
+        -event_class_id_type_timeStamp(class, id, type, timeStamp);
+        send(request, lightAgentId, event_class_id_type_timeStamp(class, id, type, timeStamp));
+        //when pushed
+        
+    }
+
+    rule +!push() : event_class_id_type_timeStamp(string class, string id, string type, string timeStamp){
+        // console.println("ready to push");
+        !push();
+    }
+
+    rule +!push(){
+
+    }
+}

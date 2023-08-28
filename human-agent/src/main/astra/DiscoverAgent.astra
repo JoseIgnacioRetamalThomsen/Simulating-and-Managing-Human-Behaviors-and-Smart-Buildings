@@ -1,0 +1,231 @@
+import mams.JSONConverter;
+import com.fasterxml.jackson.databind.JsonNode;
+
+agent DiscoverAgent extends HumanBase {
+    module Console console;
+    module System system;
+    module Debug debug;
+    module JSONConverter converter;
+    module Math math;
+    module com.ucd.hyperbuilding.ResponseParser parser;
+    module Strings str;
+    module com.ucd.hyperbuilding.Helper helper;
+    module Logic logic;
+    module Prelude prelude;
+    module Functions functions;
+
+    types DiscoverAgentOntology {
+        formula perfomingAction(boolean);
+        formula buildingNode_id_label_neightboursId_actions(int, string, list, list);
+        formula mainTarget_target_isSet(string, boolean);
+        formula subTargetGoingToLocations_location(string);
+        formula lastLocationWhenGoingRandom(string);
+        formula card(string);
+        formula is(string);
+    }
+
+    initial perfomingAction(false);
+    inference is("discovering"):-  mainTarget_target_isSet("discover", false) ;
+    inference is("discover") :- mainTarget_target_isSet("discover", true) ;
+
+	rule +!main(list args) {    
+        MAMSAgent::!init();
+        string createAgentUrl = at_index(args, 0, string);
+        string cardId = at_index(args, 1, string);
+        console.println("Creating agent agentUrl=" + createAgentUrl + ", cardId=" + cardId);
+        +card(cardId);
+        !post(createAgentUrl, "", int code, string content);
+        console.println("Agent Created, code=" + code);
+        parser.registerAgent(content);
+        console.println("Setting target to discover building.");
+        +mainTarget_target_isSet("discover", false);
+        !update(true);
+        wait(isUpdating(false));
+        !makeDecision();    
+    }
+
+    rule +!moveTargetReach() : moveTo_x_y(int targetX,int targetY) &actualPosition_x_y(int actualX, int actualY) {
+        console.println("Target reach. x="+ targetX + ", y=" + targetY);
+        -moveTo_x_y(actualX,actualY);
+        !makeDecision();
+    }
+
+    //move from transit location
+    rule +!makeDecision():
+    actualLocation(string location) & actualPosition_x_y(int actualX, int actualY) &
+        subTargetGoingToLocations_location(string gointToLocation) & location == "transit"{
+        console.println("In transit location, goingToLocation="+gointToLocation); 
+        boolean isLoop = true;
+        foreach(move_x_y_isFree_location_haveAction_actions(int xM , int yM ,boolean isFreeM, 
+        string locationM, boolean haveActionM, list actionsM)){
+            if(isLoop == true){
+                console.println("Move found, location="+locationM);
+                if(str.equal(gointToLocation, locationM)){
+                    console.println("location= " + locationM);
+                    // debug.dumpBeliefs();
+                    system.sleep(1000);
+                    -moveTo_x_y(actualX,actualY);
+                    +moveTo_x_y(xM,yM);
+                    !performAction();
+                    isLoop = false;
+                }
+            }
+        }
+    }
+
+  
+    //this is when agent is at a edge.
+    // it move to a location if is near
+    rule +!makeDecision():
+    actualLocation(string location) &
+        subTargetGoingToLocations_location(string gointToLocation) & location == "transit"{
+        console.println("In transit location, goingToLocation="+gointToLocation); 
+        boolean isLoop = true;
+        foreach(move_x_y_isFree_location_haveAction_actions(int xM , int yM ,boolean isFreeM, 
+        string locationM, boolean haveActionM, list actionsM)){
+            if(isLoop == true){
+                console.println("Move found, location="+locationM);
+                if(str.equal(gointToLocation,locationM)){
+                    +moveTo_x_y(xM,yM);
+                    !performAction();
+                    isLoop = false;
+                }
+            }
+        }
+    }
+
+
+    rule +!makeDecision(): is("discovering")  & actualLocation(string location) &
+                           subTargetGoingToLocations_location(string gointToLocation) & gointToLocation == location {
+        console.println("Discovering- subTargetGoingToLocations_location gointToLocation=" + gointToLocation);
+        -subTargetGoingToLocations_location(gointToLocation);
+        boolean isFullyDiscover = true;
+        foreach(buildingNode_id_label_neightboursId_actions(int id, string label, list neighbours, 
+                list actions)){
+                if(prelude.size(neighbours) == 0){
+                    isFullyDiscover =false;
+                }
+            }
+            if(isFullyDiscover == true){
+                console.println("Discovering- map fully discover gointToLocation=" + gointToLocation);
+                -mainTarget_target_isSet("discover",false);
+                +mainTarget_target_isSet("discover",true);
+                console.println("Fully disover map");
+                debug.dumpBeliefs();
+            }
+            !update(true);
+            wait(isUpdating(false));
+            !makeDecision();
+     }
+
+    rule +!makeDecision() : is("discovering")  & actualLocation(string location) &
+     subTargetGoingToLocations_location(string gointToLocation){
+        console.println("Discovering - Changing location gointToLocation="+ gointToLocation + ", location=" + location);
+        //means we reach point to move so need to change location 
+        //need to move to outside local position
+        query(moveUrl(string moveURL));
+   
+        !update(true);
+        wait(isUpdating(false));
+        !get(moveURL, int code, string content);
+        console.println("responsecode=" + code);
+        parser.tryFindNodeNotInActualViewButInPossibleMove(content, int xOut, int yOut);
+        console.println("x="+ xOut + ", y="+ yOut);
+        if(xOut==-999){
+            console.println("BEFORE");
+            debug.dumpBeliefs();
+            !performAction("Card_Reader");
+
+        }else{
+            +moveTo_x_y(xOut,yOut);
+            !performAction();
+        }
+    }
+
+    rule +!performAction(string action): is("discovering")  & actionAvailable(string actionAvailable) & action== actionAvailable
+    & actionUrl(string actionURL) & card(string cardId) {
+        console.println("Discovering - Perfoming action, action=" + action);
+        string json1 = "{'code':'"+ cardId + "' , 'action': '"+ action + " '}";
+        !put(actionURL, json1, int code1, string content1);
+        console.println("Card Reader Action Performed, responseCode="+ code1);
+        !update(true);
+        wait(isUpdating(false));
+        !makeDecision();
+    }
+
+    rule +!makeDecision() : is("discovering") & actualLocation(string location){
+        console.println("Discovering Seraching for target- , location=" + location);
+        query(buildingNode_id_label_neightboursId_actions(int idOnActual,
+        location, list neighboursOnActual, list actionsOnActual));
+        boolean isFound = false;
+        foreach(buildingNode_id_label_neightboursId_actions(int id, string label, list neighbours, 
+        list actions)){
+            if(isFound==false){
+            //if the neightbours list is empty it means it have been not visited.
+                if(prelude.size(neighbours) == 0){
+                    // console.println("found first to visite+" + label);
+                    string pathtoLocationToVisite = "pathto_" + label;
+                    //  console.println("Finding location for path action=" +pathtoLocationToVisite);
+                    // we now need to find the node with the action pathto
+                    boolean isFound1 = false;
+                    forall(formula  f : actionsOnActual){
+                        if(isFound1 == false){ //this may broke everyhting
+                            string locationF = helper.getLocationFromAction(f);
+                            string actionNameF = helper.getActionNameFromAction(f);
+                            int xF = helper.getXFromAction(f);
+                            int yF = helper.getYFromAction(f);
+                            if(str.equal(pathtoLocationToVisite, actionNameF)){
+                                console.println("New Node to visit found, location=" + locationF + ", actionName=" +actionNameF 
+                                + ", x=" + xF + ", y=" + yF);
+                                +subTargetGoingToLocations_location(label);
+                                isFound = true;
+                                isFound1 =true;
+                                +moveTo_x_y(xF,yF);
+                                !performAction();
+                        }
+                        }else{
+
+                        }
+                    }
+                }
+            }
+        }
+        if(isFound == false){
+                console.println("Discovering - No node found - moving to a random location.");
+                !moveToRandom(location);
+        }
+    } 
+
+    
+   rule +!makeDecision() : is("discovering") {
+        console.println("Building is dicover");
+        -mainTarget_target_isSet("discover",false);
+        +mainTarget_target_isSet("discover",true);
+        debug.dumpBeliefs();
+        !makeDecision();
+   }
+ 
+    rule +!moveToRandom(string location): buildingNode_id_label_neightboursId_actions(int id1, location, list neighbours1,
+     list action1s)
+      & lastLocationWhenGoingRandom(string lastLocation) {
+        console.println("moveToRandom, location=" + location + ", lastLocation=" + lastLocation);
+        helper.getRandoActionFromList(action1s, int xh, int yh,string randonLocation, lastLocation);
+        +subTargetGoingToLocations_location(randonLocation);
+        -+lastLocationWhenGoingRandom(randonLocation);
+        +moveTo_x_y(xh,yh);
+        !performAction();
+    }
+
+    rule +!moveToRandom(string location): buildingNode_id_label_neightboursId_actions(int id1, location, list neighbours1,   list action1s){
+        console.println("moveToRandom, location=" + location);
+        helper.getRandoActionFromList(action1s, int xh, int yh,string randonLocation);
+        +subTargetGoingToLocations_location(randonLocation);
+        -+lastLocationWhenGoingRandom(randonLocation);
+        +moveTo_x_y(xh,yh);
+        !performAction();
+    }
+
+     
+
+    
+}
