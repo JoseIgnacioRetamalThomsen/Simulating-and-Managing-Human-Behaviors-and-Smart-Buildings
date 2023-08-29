@@ -16,7 +16,7 @@ agent Turnstile {//extends mams.ActiveMAMSAgent{
         formula thingProcessed(boolean);
         formula daoAgent(string);
         formula queueAgent(string);
-        formula turnistileAgent_id_url_queueid(string, string, string);
+        formula turnstileAgent_id_url_queueid(string, string, string);
         formula cardEvent(string);
         formula toggleUrl(string);
         formula statusUrl(string);
@@ -35,7 +35,7 @@ agent Turnstile {//extends mams.ActiveMAMSAgent{
 
         formula responseCode(int);
         formula processingEvent(boolean);
-        formula isTurnistileProcessing(boolean);
+        formula isTurnstileProcessing(boolean);
         formula cardEvent_cardId_turnstileId_timeStamp(string, string, string);
         formula canOpen(string);
         formula  cardEventResponse_success(boolean );
@@ -61,7 +61,7 @@ agent Turnstile {//extends mams.ActiveMAMSAgent{
         string serverAgentName  = at_index(args, 2, string);
         string daoAgent = at_index(args, 3, string);
         string queueAgent = at_index(args, 4, string);
-        +turnistileAgent_id_url_queueid(id, turnstileUrl, queueAgent);
+        +turnstileAgent_id_url_queueid(id, turnstileUrl, queueAgent);
         +serverAgent(serverAgentName);
         +daoAgent(daoAgent);
         +queueAgent(queueAgent);
@@ -75,25 +75,21 @@ agent Turnstile {//extends mams.ActiveMAMSAgent{
     }
 
     rule +!initThing(): 
-    turnistileAgent_id_url_queueid(string id , string url, string qid) & 
+    turnstileAgent_id_url_queueid(string id , string url, string qid) &
     serverAgent(string serverAgentName) & 
     subscribeToTurnstileEvents_cardUrl_sensor1Url(string cardReaderUrl, string sensor1Url) {
         console.println("Sending Card reader , serverAgentName="+ serverAgentName);
         //subscribe agent
-        send(request, serverAgentName, turnistileAgent_id_url_queueid(id, url, qid));
+        send(request, serverAgentName, turnstileAgent_id_url_queueid(id, url, qid));
         //subscribe to card reader event
          send(request, serverAgentName, subscribeToTurnstileEvents_cardUrl_sensor1Url(
                 cardReaderUrl, sensor1Url));
     }
 
 
-//enter
+    //enter
     rule +!openDoor() : canOpen("fromRight")  & toggleUrl(string url) {
         !checkCard();
-      
-        // send(request, daoAGent, checkId("123"));
-        // client.putRequest(url,"", int responseCode, string response);
-     
         // debug.dumpBeliefs();
     }
 
@@ -101,14 +97,6 @@ agent Turnstile {//extends mams.ActiveMAMSAgent{
     rule +!openDoor(): canOpen("fromLeft")  &  toggleUrl(string url){
         query(daoAgent(string daoAGent));
         !checkCard();
-        
-       
-        // console.println("tryed to open door, responsecode="+responseCode );
-        // !checkResponse(responseCode);
-        // if(responseCode == 200){
-        //     -doorStatus("closed");
-        //     +doorStatus("open");
-        // }
         debug.dumpBeliefs();
     }
 
@@ -116,9 +104,7 @@ agent Turnstile {//extends mams.ActiveMAMSAgent{
      & daoAgent(string daoAGent){
         send(request, daoAGent, cardEvent_cardId_turnstileId_timeStamp(cardId, tid, timestamp));
         console.println("SENT ");
-      
     }
-
 
     rule @message(request, string sender,  cardEventResponse_success(boolean isSuccess)){
         +cardEventResponse_success(isSuccess);
@@ -144,7 +130,7 @@ agent Turnstile {//extends mams.ActiveMAMSAgent{
 
  rule +!checkResponse(int code): doorStatus("closed") &  toggleUrl(string url){
         client.putRequest(url,"", int responseCode, string response);
-        console.println("tryed to open door, responsecode="+responseCode );
+        console.println("tried to open door, responseCode="+responseCode );
         !checkResponse(responseCode);
     }
 
@@ -153,50 +139,26 @@ agent Turnstile {//extends mams.ActiveMAMSAgent{
         console.println("FAILED TO OPEN DOOR");
         !finishProcess();
     }
-    // rule @message(request, string sender, cardEvent(string cardId)) {
-    //     console.println("Got card event, cardId=" + cardId);
-    //     debug.dumpBeliefs();
-    //     //mis check with agent database if open
-    //     !openDoor();
-    // }
-
-    //  rule @message(request, string sender, 
-    //  sensorEvent_sensorId_type_timeStampSeconds(string sensorId, string type , string timeStampSecods)) {
-    //     console.println("Got sensor, sensorId=" + sensorId + ", type="+ type + ", timeStampSecods=" + timeStampSecods);
-    //     +newSensorEvent_sensorId_type_timeStampSeconds(sensorId, type, timeStampSecods);
-    //     !newSensor();
-    //     !processEvents();
-    //    // debug.dumpBeliefs();
-    
-    // }
 
      rule @message(request, string sender, event_class_id_type_timeStamp(string class, string sensorId, 
-                    string type , string timeStampSecods)) {
-        console.println("Got event ,class =" +class + " sensorId=" + sensorId + ", type="+ type + ", timeStampSecods=" + timeStampSecods);
-        +event_class_id_type_timeStamp(class, sensorId, type, timeStampSecods);
-       
-       console.println("updating door status");
+                    string type , string timeStampSeconds)) {
+        console.println("Got event ,class =" +class + " sensorId=" + sensorId + ", type="+ type + ", timeStampSeconds=" + timeStampSeconds);
+        +event_class_id_type_timeStamp(class, sensorId, type, timeStampSeconds);
+        console.println("updating door status");
         query(statusUrl(string statusUrl));
         console.println("updating door status url= " + statusUrl);
-client.getRequest(statusUrl, int responseCode, string response);
-        console.println("RESPOSE++++++++++++++++++========="+response);
-       data.updateStatus(response);
-    
- 
-    -+processingEvent(true);
-    !processEvent();
-    // !newSensor();
-    // !processEvents();
-   // debug.dumpBeliefs();
+        client.getRequest(statusUrl, int responseCode, string response);
+        data.updateStatus(response);
+        -+processingEvent(true);
+        !processEvent();
 
-}
-        rule +! processEvent(): event_class_id_type_timeStamp("card",string cardId,string tid,string timeStamp){
+    }
+
+    rule +! processEvent(): event_class_id_type_timeStamp("card",string cardId,string tid,string timeStamp){
        console.println("card event");
        -event_class_id_type_timeStamp("card", cardId, tid, timeStamp);
        +cardEvent_cardId_turnstileId_timeStamp(cardId, tid, timeStamp);
        !openDoor();
-        // +newSensorEvent_sensorId_type_timeStampSeconds(sensorId, type, timeStamp);
-        // !newSensor();
     }
 
     rule +! processEvent(): event_class_id_type_timeStamp("sensor",string sensorId,string type,string timeStamp){
@@ -208,27 +170,27 @@ client.getRequest(statusUrl, int responseCode, string response);
 
    
     rule +!newSensor():
-    newSensorEvent_sensorId_type_timeStampSeconds(string sensorId, string type, string timeStampSecods) 
+    newSensorEvent_sensorId_type_timeStampSeconds(string sensorId, string type, string timeStampSeconds)
     {
         if (strings.equal(type ,"enter")){
-            console.println("Enter, sensorId=" + sensorId + ", type="+ type + ", timeStampSecods=" 
-            + timeStampSecods);
-            -newSensorEvent_sensorId_type_timeStampSeconds(sensorId, type, timeStampSecods);
+            console.println("Enter, sensorId=" + sensorId + ", type="+ type + ", timeStampSeconds="
+            + timeStampSeconds);
+            -newSensorEvent_sensorId_type_timeStampSeconds(sensorId, type, timeStampSeconds);
             query(sensorEnter_sensor_time(sensorId, long TimeStamp));
             -sensorEnter_sensor_time(sensorId,  TimeStamp);
-            +sensorEnter_sensor_time(sensorId, math.longValue(timeStampSecods));
+            +sensorEnter_sensor_time(sensorId, math.longValue(timeStampSeconds));
         } else{
-            console.println("Exit, sensorId=" + sensorId + ", type="+ type + ", timeStampSecods=" + timeStampSecods);
-            -newSensorEvent_sensorId_type_timeStampSeconds(sensorId, type, timeStampSecods);
+            console.println("Exit, sensorId=" + sensorId + ", type="+ type + ", timeStampSeconds=" + timeStampSeconds);
+            -newSensorEvent_sensorId_type_timeStampSeconds(sensorId, type, timeStampSeconds);
             query(sensorFree_sensor_time(sensorId, long TimeStamp));
             -sensorFree_sensor_time(sensorId,  TimeStamp);
-            +sensorFree_sensor_time(sensorId,math.longValue(timeStampSecods));
+            +sensorFree_sensor_time(sensorId,math.longValue(timeStampSeconds));
         }   
         !newSensor();
     }
 
     rule +!newSensor(){
-        console.println("callin update status");
+        console.println("calling update status");
         !updateSensorsStatus();
     }
 
@@ -267,12 +229,8 @@ client.getRequest(statusUrl, int responseCode, string response);
       & sensorFree_sensor_time("sensor2", long sensor2FreeTimeStamp) & 
       sensor2FreeTimeStamp > sensor1FreeTimeStamp{
           client.putRequest(url,"", int responseCode, string response);
-        console.println("tryed to cloass door, responsecode="+responseCode );
+        console.println("tried to close door, responseCode="+responseCode );
         !checkResponse(responseCode);
-        // if(responseCode == 200){
-        //     -doorStatus("open");
-        //     +doorStatus("closed");
-        // }
 
     }
  
@@ -284,9 +242,8 @@ client.getRequest(statusUrl, int responseCode, string response);
     sensorFree_sensor_time("sensor3", long sensor3FreeTimeStamp) &
     sensor2FreeTimeStamp > sensor3FreeTimeStamp {
         client.putRequest(url,"", int responseCode, string response);
-        console.println("tryed to closs door, responsecode="+responseCode );
+        console.println("tried to close door, responseCode="+responseCode );
         !checkResponse(responseCode);
-
     }
 
     rule +!checkResponse(int code): doorStatus("open") & code == 200{
@@ -294,13 +251,12 @@ client.getRequest(statusUrl, int responseCode, string response);
         -doorStatus("open");
         +doorStatus("closed");
         !finishProcess();
-        
     }
 
  rule +!checkResponse(int code): doorStatus("open") &  toggleUrl(string url){
     system.sleep(100);
         client.putRequest(url,"", int responseCode, string response);
-        console.println("tryed to clos door, responsecode="+responseCode );
+        console.println("tried to close door, responseCode="+responseCode );
         !checkResponse(responseCode);
     }
 
@@ -310,6 +266,6 @@ client.getRequest(statusUrl, int responseCode, string response);
 
             
     rule +!finishProcess(): queueAgent(string queueAgent) {
-        send(request, queueAgent, isTurnistileProcessing(false));
+        send(request, queueAgent, isTurnstileProcessing(false));
     }
 }

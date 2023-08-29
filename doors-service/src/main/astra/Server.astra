@@ -8,7 +8,7 @@ agent Server {
     module Client client;
 
     types serverOntology{
-        formula turnistileAgent_id_url_queueid(string, string,string);
+        formula turnstileAgent_id_url_queueid(string, string,string);
         formula cardReader_url(string);
         formula agentIdToAgentNameAndAgentQueue(string, string,string);
         formula cardEvent(string);
@@ -34,24 +34,24 @@ agent Server {
     }
 
     //subscribe agent 
-    rule @message(request, string sender, turnistileAgent_id_url_queueid(string id, string url, string qid)) {
-        console.println("Ading tursntile agents, id=" + id);
+    rule @message(request, string sender, turnstileAgent_id_url_queueid(string id, string url, string qid)) {
+        console.println("Adding turnstile agents, id=" + id);
         console.println("sender=" + sender);
-        +turnistileAgent_id_url_queueid(id, url, qid);
+        +turnstileAgent_id_url_queueid(id, url, qid);
         +agentIdToAgentNameAndAgentQueue(id, sender, qid);
     }
 
-    // Link a turnstile Agent to a turnistile thing
+    // Link a turnstile Agent to a turnstile thing
     rule @message(request, string sender, 
         subscribeToTurnstileEvents_cardUrl_sensor1Url(string cardReaderUrl,
             string sensor1Url) ) {
         console.println("subscribing to cardReader, cardReaderUrl=" + cardReaderUrl + ", sender=" + sender);
         query(host(string hostString));
         query(cardEventEndPoint(string cardEndPointString));
-        query(agentIdToAgentNameAndAgentQueue(string agentID, sender, string agendQueueId));
+        query(agentIdToAgentNameAndAgentQueue(string agentID, sender, string agedQueueId));
         query(sensorsEndPoint(string sensorsEndPoint));
         string requestBody = "{'url':'" +hostString + cardEndPointString +"/" + agentID + "'}";
-        console.println("Subscribien agent to cardreader sent async, agentId=" + agentID + ", requestBody=" + requestBody);
+        console.println("Subscribe agent to card-reader sent async, agentId=" + agentID + ", requestBody=" + requestBody);
         client.postRequestAsync(cardReaderUrl, requestBody);
         
 
@@ -62,7 +62,7 @@ agent Server {
       
     }
 
-    //send card event to turnstyle queu
+    //send card event to turnstile queue
     rule $server.cardEvent(string agentID, string cardId, string tid, string timeStamp){
         console.println("Card event, agentId=" + agentID + ", cardId=" + cardId + ", tid=" + tid +
          ", timeStamp=" + timeStamp);
@@ -70,12 +70,11 @@ agent Server {
         send(request, queueName, cardEvent_cardId_turnstileId_timeStamp(cardId,tid,timeStamp));
     }
 
-    
-    rule $server.sensorEvent(string agentIdstring,string sensorId, string type, string timeStampSecods){
-       console.println("Sensor Event, agentIdstring=" + agentIdstring + ", sensorId=" + sensorId + 
-         ", type=" + type + ", timeStampSecods=" + timeStampSecods);
-         query(agentIdToAgentNameAndAgentQueue(agentIdstring, string agentName, string agentqueuid));
-        send(request, agentqueuid,
-        event_class_id_type_timeStamp("sensor", sensorId, type, timeStampSecods));
+    rule $server.sensorEvent(string agentIdString,string sensorId, string type, string timeStampSeconds){
+       console.println("Sensor Event, agentIdString=" + agentIdString + ", sensorId=" + sensorId +
+         ", type=" + type + ", timeStampSeconds=" + timeStampSeconds);
+         query(agentIdToAgentNameAndAgentQueue(agentIdString, string agentName, string agentQueueId));
+        send(request, agentQueueId,
+        event_class_id_type_timeStamp("sensor", sensorId, type, timeStampSeconds));
     }
 }

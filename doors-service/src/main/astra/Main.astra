@@ -4,25 +4,24 @@ agent Main {
     module Debug debug;
 
     types mainOntology{
-        formula turnistileThing_url(string);
-        formula turnistileAgent_id_url(string, string);
+        formula turnstileThing_url(string);
+        formula turnstileAgent_id_url(string, string);
         formula idCount(int);
         formula serverAgent(string);
         formula daoAgent(string);
     }
 
     initial idCount(0);
-    initial turnistileThing_url("http://127.0.0.1:8080/hyperbuilding/turnstile/t1");
-    initial turnistileThing_url("http://127.0.0.1:8080/hyperbuilding/turnstile/t2");
-    initial turnistileThing_url("http://127.0.0.1:8080/hyperbuilding/turnstile/t3");
-    initial turnistileThing_url("http://127.0.0.1:8080/hyperbuilding/turnstile/t4");
+    initial turnstileThing_url("http://127.0.0.1:8080/hyperbuilding/turnstile/t1");
+    initial turnstileThing_url("http://127.0.0.1:8080/hyperbuilding/turnstile/t2");
+    initial turnstileThing_url("http://127.0.0.1:8080/hyperbuilding/turnstile/t3");
+    initial turnstileThing_url("http://127.0.0.1:8080/hyperbuilding/turnstile/t4");
 
 	rule +!main(list args) {
         system.sleep(500);
         !server("ServerAgent");
         !createDabaseAgent("DAOAgent");
-        !createTurnistileAgents();
-        
+        !createTurnstileAgents();
     }
 
     rule +!server(string serverAgentId){
@@ -31,26 +30,25 @@ agent Main {
         +serverAgent(serverAgentId);
     }
 
-    rule +!createTurnistileAgents(): serverAgent(string serverAgentId) & daoAgent(string daoAgent) {
-        console.println("Create turnistile agents.");
+    rule +!createTurnstileAgents(): serverAgent(string serverAgentId) & daoAgent(string daoAgent) {
+        console.println("Create turnstile agents.");
         
-        foreach(turnistileThing_url(string url) ){
+        foreach(turnstileThing_url(string url) ){
             query(idCount(int count));
             string idT = "t" + count;
             string idTQ = "q" + count;
-            console.println("Create turnistile agent, agentId=" + idT);
+            console.println("Create turnstile agent, agentId=" + idT);
             system.createAgent(idT, "Turnstile");
-            system.createAgent(idTQ, "TunstileQueue");
+            system.createAgent(idTQ, "TurnstileQueue");
             system.setMainGoal(idT, [idT, url, serverAgentId, daoAgent, idTQ]);
             system.setMainGoal(idTQ, [idTQ, idT, serverAgentId]);
     
-            +turnistileAgent_id_url(idT, url);
+            +turnstileAgent_id_url(idT, url);
             -idCount(count);
             +idCount(count + 1);
             //debug.dumpBeliefs();
         }
     }
-
 
     rule +!createDabaseAgent(string agentName) {
          console.println("Create Mock DB");

@@ -1,7 +1,7 @@
 
 import com.ucd.hyperbuilding.EventsQueue;
 
-agent TunstileQueue{
+agent TurnstileQueue{
     module System system;
     module Console console;
     module Debug debug;
@@ -11,52 +11,52 @@ module EventsQueue queue;
 types agentOntology{
     formula event_class_id_type_timeStamp(string, string, string, string);
     formula isUpdatingQueue(boolean);
-    formula turnistileId(string);
+    formula turnstileId(string);
     formula serverId(string);
     formula isPushing(boolean);
-    formula isTurnistileProcessing(boolean);
+    formula isTurnstileProcessing(boolean);
    formula  cardEvent_cardId_turnstileId_timeStamp(string, string, string );
 }
     initial isUpdatingQueue(false);
     initial isPushing(false);
-    initial isTurnistileProcessing(false);
+    initial isTurnstileProcessing(false);
 
     rule +!main(list args) {
         console.println("Creating agent");
         console.println("Main" + at_index(args, 0, string));
         string id =  at_index(args, 0, string);
-        string turnistileId = at_index(args, 1, string);
+        string turnstileId = at_index(args, 1, string);
         string serverId  = at_index(args, 2, string);
-        +turnistileId(turnistileId);
+        +turnstileId(turnstileId);
         +serverId(serverId);
         
         queue.init();
 
     }
 
-    rule +!initQueue(): turnistileId(string tid) &  serverId(string sid)
+    rule +!initQueue(): turnstileId(string tid) &  serverId(string sid)
     {
         console.println("initializing queue");
     }
 
     rule +!push() : isPushing(false) &  event_class_id_type_timeStamp(string class, string id ,
-     string type , string timeStamp) & turnistileId(string tid) & isTurnistileProcessing(false) {
+     string type , string timeStamp) & turnstileId(string tid) & isTurnstileProcessing(false) {
         console.println("pushing event, class=" + class);
         -event_class_id_type_timeStamp(class, id, type, timeStamp);
         send(request, tid,
         event_class_id_type_timeStamp(class, id, type, timeStamp));
-        -+isTurnistileProcessing(true);
+        -+isTurnstileProcessing(true);
     }
     rule +!push(){
 
     }
 
  rule @message(request, string sender, 
-     event_class_id_type_timeStamp(string class, string sensorId, string type , string timeStampSecods)) {
-        console.println("Got sensor, sensorId=" + sensorId + ", type="+ type + ", timeStampSecods=" + timeStampSecods);
+     event_class_id_type_timeStamp(string class, string sensorId, string type , string timeStampSeconds)) {
+        console.println("Got sensor, sensorId=" + sensorId + ", type="+ type + ", timeStampSecods=" + timeStampSeconds);
         wait(isUpdatingQueue(false));
         -+isUpdatingQueue(true);
-        queue.AddEvent(class, sensorId, type, timeStampSecods);
+        queue.AddEvent(class, sensorId, type, timeStampSeconds);
         wait(isUpdatingQueue(false));
         debug.dumpBeliefs();
         !push();
@@ -74,9 +74,9 @@ types agentOntology{
         !push();
     }
 
-    rule @message(request, string sender, isTurnistileProcessing(boolean is)){
+    rule @message(request, string sender, isTurnstileProcessing(boolean is)){
         console.println("finish processing pushing new event");
-        -+isTurnistileProcessing(false);
+        -+isTurnstileProcessing(false);
         debug.dumpBeliefs();
         !push();
     }
