@@ -1,5 +1,6 @@
 package com.ucd.hyperbuilding;
 
+import astra.core.Agent;
 import astra.core.Module;
 import astra.formula.Predicate;
 import astra.term.Primitive;
@@ -8,7 +9,7 @@ import astra.term.Term;
 import java.util.Optional;
 import java.util.PriorityQueue;
 
-public class EventsQueue extends Module {
+public class EventsQueue extends Module implements AgentEnhancer {
 
     PriorityQueue<SensorEvent> eventQueue;
 
@@ -18,39 +19,39 @@ public class EventsQueue extends Module {
         return true;
     }
 
-
     @ACTION
     public boolean AddEvent(String eventClass, String sensorId, String type, String timeStamp) {
-        SensorEvent newEvent = new SensorEvent(eventClass.replace("\"",""),sensorId.replace("\"",""),
-                type.replace("\"",""), timeStamp.replace("\"",""));
+        eventQueue.add(new SensorEvent(
+                removeQuotes(eventClass),
+                removeQuotes(sensorId),
+                removeQuotes(type),
+                removeQuotes(timeStamp)
+        ));
         Optional<Predicate> eventInAgentBeliefs = agent.beliefs().beliefs().stream()
                 .filter(formula -> formula instanceof Predicate)
                 .map(formula -> (Predicate) formula)
                 .filter(predicate -> predicate.predicate().equals("event_class_id_type_timeStamp"))
                 .findFirst();
-        eventQueue.add(newEvent);
         if (eventInAgentBeliefs.isPresent()) {
-            Predicate p = eventInAgentBeliefs.get();
-            System.out.println("PREDICATE= " + p.toString());
-            agent.beliefs().dropBelief(p);
-
-            eventQueue.add(new SensorEvent(p.termAt(0).toString().replace("\"","")
-                    , p.termAt(1).toString().replace("\"","")
-                    , p.termAt(2).toString().replace("\"","")
-                    , p.termAt(3).toString().replace("\"","")));
+            Predicate actualEventInAgentBeliefs = eventInAgentBeliefs.get();
+            agent.beliefs().dropBelief(actualEventInAgentBeliefs);
+            eventQueue.add(new SensorEvent(
+                    removeQuotes(actualEventInAgentBeliefs.termAt(0).toString()),
+                    removeQuotes(actualEventInAgentBeliefs.termAt(1).toString()),
+                    removeQuotes(actualEventInAgentBeliefs.termAt(2).toString()),
+                    removeQuotes(actualEventInAgentBeliefs.termAt(3).toString())
+            ));
 
         }
         SensorEvent event = eventQueue.poll();
-        Predicate predicateToAdd = new Predicate("event_class_id_type_timeStamp", new Term[]{
-                Primitive.newPrimitive(event.eventClass),
-                Primitive.newPrimitive(event.sensorId),
-                Primitive.newPrimitive(event.type),
-                Primitive.newPrimitive(String.valueOf(event.timeStamp))
-        });
-        agent.beliefs().addBelief(predicateToAdd);
+        setBelief("event_class_id_type_timeStamp", event.eventClass, event.sensorId, event.type, event.timeStamp);
         updateIsUpdating();
-        System.out.println("QUEUE SIZE= " + eventQueue.size());
+
         return true;
+    }
+
+    private String removeQuotes(String input) {
+        return input.replace("\"", "");
     }
 
     private void updateIsUpdating() {
@@ -62,6 +63,11 @@ public class EventsQueue extends Module {
         agent.beliefs().dropBelief(isUpdating.get());
         agent.beliefs().addBelief(new Predicate("isUpdatingQueue",
                 new Term[]{Primitive.newPrimitive(false)}));
+    }
+
+    @Override
+    public Agent getAgent() {
+        return agent;
     }
 
     static class SensorEvent implements Comparable<SensorEvent> {
@@ -78,7 +84,7 @@ public class EventsQueue extends Module {
             this.sensorId = sensorId;
             this.type = type;
             this.timeStamp = timeStamp;
-            this.dateFloat = Float.parseFloat(timeStamp.replace("\"",""));
+            this.dateFloat = Float.parseFloat(timeStamp.replace("\"", ""));
         }
 
         @Override

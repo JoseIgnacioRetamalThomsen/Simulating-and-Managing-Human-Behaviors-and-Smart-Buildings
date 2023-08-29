@@ -15,52 +15,57 @@ public class Client extends Module {
     }
 
     void postRequestAsync(String uri, String body, String mediaType) {
-        new Thread(() -> {
-            try {
-                RequestObject requestObject = new RequestObject();
-                requestObject.method = "POST";
-                requestObject.url = uri;
-                requestObject.content = body;
-                WebResponse response = WebUtils.sendRequest(requestObject);
-                System.out.println("Post request async completed, uri=" + uri + ", responseCode=" + response.getCode() +
-                        "responseBod=" + response.getContent());
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
-        }).start();
+        new Thread(() -> sendPostRequest(uri, body)).start();
+    }
+
+    private void sendPostRequest(String uri, String body) {
+        try {
+            RequestObject requestObject = new RequestObject();
+            requestObject.method = "POST";
+            requestObject.url = uri;
+            requestObject.content = body;
+
+            WebResponse response = WebUtils.sendRequest(requestObject);
+            System.out.println("Post request async completed, uri=" + uri + ", responseCode=" + response.getCode() +
+                    ", responseBody=" + response.getContent());
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
     }
 
     @ACTION
     public boolean getRequest(String uri, ActionParam<Integer> responseCode, ActionParam<String> responseString) {
-        getRequest(uri, "application/json", responseCode, responseString);
+        String defaultMediaType = "application/json";
+        WebResponse response = sendGetRequest(uri, defaultMediaType);
+        responseCode.set(response.getCode());
+        responseString.set(response.getContent());
         return true;
     }
 
-    private void getRequest(String uri, String mediaType, ActionParam<Integer> responseCode, ActionParam<String> responseString) {
+    private WebResponse sendGetRequest(String uri, String mediaType) {
         RequestObject requestObject = new RequestObject();
         requestObject.method = "GET";
         requestObject.url = uri;
-        requestObject.content = null;
         requestObject.type = mediaType;
-        WebResponse response = WebUtils.sendRequest(requestObject);
-        responseCode.set(response.getCode());
-        responseString.set(response.getContent());
+
+        return WebUtils.sendRequest(requestObject);
     }
 
     @ACTION
     public boolean putRequest(String uri, String body, ActionParam<Integer> responseCode, ActionParam<String> responseString) {
-        putRequest(uri, body, "application/json", responseCode, responseString);
+        String defaultMediaType = "application/json";
+        WebResponse response = sendPutRequest(uri, body, defaultMediaType);
+        responseCode.set(response.getCode());
+        responseString.set(response.getContent());
         return true;
     }
 
-    private void putRequest(String uri, String body, String mediaType, ActionParam<Integer> responseCode, ActionParam<String> responseString) {
+    private WebResponse sendPutRequest(String uri, String body, String mediaType) {
         RequestObject requestObject = new RequestObject();
         requestObject.method = "PUT";
         requestObject.url = uri;
         requestObject.content = body;
         requestObject.type = mediaType;
-        WebResponse response = WebUtils.sendRequest(requestObject);
-        responseCode.set(response.getCode());
-        responseString.set(response.getContent());
+        return WebUtils.sendRequest(requestObject);
     }
 }

@@ -40,45 +40,48 @@ public class ServerLink extends Module {
         Path cardEventPath = new Path(PATH_CARDEVENT_ID);
         Path sensorEndPoint = new Path(PATH_SENSORS_ID);
         webServer.addPath(cardEventPath);
+        webServer.addPath(sensorEndPoint);
         cardEventPath.put(state -> {
             String agentID = state.binding.get("id");
             try {
-
                 CardEvent cardId = gson.fromJson(Utils.getBody(state.request), CardEvent.class);
-                agent.addEvent(new CardReaderEvent(Primitive.newPrimitive(agentID),
-                        Primitive.newPrimitive(cardId.cardId),
-                        Primitive.newPrimitive(cardId.turnstileId),
-                        Primitive.newPrimitive(String.valueOf(cardId.timeStampSeconds))));
-                WebServer.writeResponse(state,
-                        ResponseEntity.type(state.contentType)
-                                .status(HttpResponseStatus.CREATED));
+                sendCardEvent(agentID, cardId);
+                WebServer.writeResponse(state, ResponseEntity.type(state.contentType)
+                        .status(HttpResponseStatus.CREATED));
             } catch (IOException e) {
                 WebServer.writeErrorResponse(state, HttpResponseStatus.INTERNAL_SERVER_ERROR);
             }
         });
-
-
-        webServer.addPath(sensorEndPoint);
         sensorEndPoint.put(state -> {
             String agentID = state.binding.get("id");
             try {
                 SensorEventJson sensorEvent = gson.fromJson(Utils.getBody(state.request), SensorEventJson.class);
                 System.out.println(sensorEvent);
-                agent.addEvent(new SensorEvent(
-                        Primitive.newPrimitive(agentID),
-                        Primitive.newPrimitive(sensorEvent.sensorId),
-                        Primitive.newPrimitive(sensorEvent.type),
-                        Primitive.newPrimitive(String.valueOf(sensorEvent.timeStampSeconds))
-
-                ));
-                WebServer.writeResponse(state,
-                        ResponseEntity.type(state.contentType)
-                                .status(HttpResponseStatus.CREATED));
+                sendSensorEvent(agentID, sensorEvent);
+                WebServer.writeResponse(state, ResponseEntity.type(state.contentType)
+                        .status(HttpResponseStatus.CREATED));
             } catch (IOException e) {
                 WebServer.writeErrorResponse(state, HttpResponseStatus.INTERNAL_SERVER_ERROR);
             }
         });
         return true;
+    }
+
+    private void sendSensorEvent(String agentID, SensorEventJson sensorEvent) {
+        agent.addEvent(new SensorEvent(
+                Primitive.newPrimitive(agentID),
+                Primitive.newPrimitive(sensorEvent.sensorId),
+                Primitive.newPrimitive(sensorEvent.type),
+                Primitive.newPrimitive(String.valueOf(sensorEvent.timeStampSeconds))
+
+        ));
+    }
+
+    private void sendCardEvent(String agentID, CardEvent cardId) {
+        agent.addEvent(new CardReaderEvent(Primitive.newPrimitive(agentID),
+                Primitive.newPrimitive(cardId.cardId),
+                Primitive.newPrimitive(cardId.turnstileId),
+                Primitive.newPrimitive(String.valueOf(cardId.timeStampSeconds))));
     }
 
     @EVENT(types = {"string"}, signature = "$com.ucd.doors.event.CardReaderEvent", symbols = {})

@@ -1,5 +1,6 @@
 package com.ucd.hyperbuilding;
 
+import astra.core.Agent;
 import astra.core.Module;
 import astra.formula.Predicate;
 import astra.term.Primitive;
@@ -9,44 +10,21 @@ import com.ucd.hyperbuilding.data.Thing;
 
 import java.util.Optional;
 
-public class TurnstileAgentDataProcessor extends Module {
+public class TurnstileAgentDataProcessor extends Module implements AgentEnhancer{
     Gson gson = new Gson();
 
     @ACTION
     public boolean processTurnstileThing(String thingJsonString) {
         Thing turnstileThing = gson.fromJson(thingJsonString, Thing.class);
-
-        System.out.println(turnstileThing.description);
         String cardEventUrl = turnstileThing.Events.get(0).Forms.get(0).Href;
         String toggleUrl = turnstileThing.actions.get(0).Forms.get(0).Href;
         String sensor1Url = turnstileThing.Events.get(1).Forms.get(0).Href;
         String statusUrl = turnstileThing.properties.get(0).Forms.get(0).Href;
-        System.out.println("Url= " + cardEventUrl);
-
-        agent.beliefs().addBelief
-                (new Predicate("subscribeToTurnstileEvents_cardUrl_sensor1Url",
-                        new Term[]{
-                                Primitive.newPrimitive((String) cardEventUrl),
-                                Primitive.newPrimitive((String) sensor1Url)
-                        }));
-
-
-        agent.beliefs().addBelief(new Predicate("toggleUrl", new Term[]{
-                Primitive.newPrimitive((String)
-                        toggleUrl)}));
-
-        agent.beliefs().addBelief(new Predicate("doorStatus", new Term[]{
-                Primitive.newPrimitive((String)
-                        "closed")}));
-
-        agent.beliefs().addBelief(new Predicate("thingProcessed", new Term[]{
-                Primitive.newPrimitive((boolean)
-                        true)}));
-
-        agent.beliefs().addBelief(new Predicate("statusUrl", new Term[]{
-                Primitive.newPrimitive(statusUrl
-                )}));
-
+        setBelief("subscribeToTurnstileEvents_cardUrl_sensor1Url",cardEventUrl, sensor1Url);
+        setBelief("toggleUrl", toggleUrl);
+        setBelief("statusUrl",statusUrl);
+        setBelief("doorStatus","closed");
+        setBelief("thingProcessed", true);
         return true;
     }
 
@@ -61,16 +39,20 @@ public class TurnstileAgentDataProcessor extends Module {
         if(actualStatusPredicate.isPresent()){
             agent.beliefs().dropBelief(actualStatusPredicate.get());
         }
-
         agent.beliefs().addBelief(new Predicate("doorStatus" ,new Term[]{Primitive.newPrimitive(
                 turnstileThing.status.toLowerCase()
         )}));
         return true;
+    }
 
+    @Override
+    public Agent getAgent() {
+        return agent;
+    }
+
+    private static class StatusJson{
+        public String status;
     }
 }
 
 
-class StatusJson{
-    public String status;
-}
