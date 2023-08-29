@@ -19,6 +19,7 @@ mvn compile astra:deploy
 ## Agent Types
 
 This project consists of a service that controls the turnstile systems in the simulations. It listens for card events and sensor events from each turnstile. The system assigns a turnstile agent to each turnstile. There's also a server agent that listens for the events and distributes them to the respective turnstile agents through the queue agent. A database agent is utilized to check the card ID. The turnstile agent opens and closes the door using PUT requests.
+
 ## Folder Structure
 
 <pre>
