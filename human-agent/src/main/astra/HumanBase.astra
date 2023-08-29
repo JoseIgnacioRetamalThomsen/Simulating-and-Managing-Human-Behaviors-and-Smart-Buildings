@@ -78,7 +78,7 @@ agent HumanBase extends mams.MAMSAgent {
     }
 
     rule +!performAction() {
-        console.println("performAction - No posible move.");
+        console.println("performAction - No possible move.");
         system.sleep(2000);
         debug.dumpBeliefs();
         !update(true);
@@ -87,8 +87,8 @@ agent HumanBase extends mams.MAMSAgent {
     }
 
     rule +!move(int x, int y): getViewUrl(string url) {
-        string postionJson =  "{x:" + x + ",y:" + y +"}";
-        !put(url, postionJson, int code, string content);
+        string positionJson =  "{x:" + x + ",y:" + y +"}";
+        !put(url, positionJson, int code, string content);
         !checkPutRequest(code);
     }
     
@@ -102,7 +102,7 @@ agent HumanBase extends mams.MAMSAgent {
         !action(content);
     }
 
-    // no touch the exra " there is a bug!!!!
+    // no touch the  " there is a bug!!!!
     rule +!action("\"moving\""): statusUrl(string baseUrlString){
         !action("moving");
     }

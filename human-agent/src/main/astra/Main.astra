@@ -6,10 +6,11 @@ agent Main extends mams.MAMSAgent {
 
 	rule +!main(list args) {
 		MAMSAgent::!setup();
-        system.createAgent("HumanBase", "HumanBase");
+        system.createAgent("HumanBase", "DiscoverAgent");
         system.setMainGoal("HumanBase", ["http://127.0.0.1:8080/hyperbuilding/agentbody","002","X"]);
+
         // // debug.dumpBeliefs();
-        // system.createAgent("human2", "DiscoverAgent");
+        // system.createAgent("human2", "MoveAgent1");
         // system.setMainGoal("human2", ["http://127.0.0.1:8080/hyperbuilding/agentbody","002","X"]);
 
         //      system.sleep(6000);

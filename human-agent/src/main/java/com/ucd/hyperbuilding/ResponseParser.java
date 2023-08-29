@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class ResponseParser extends Module implements AgentEnhancer{
+public class ResponseParser extends Module implements AgentEnhancer {
     private final Gson gson = new Gson();
 
     private boolean isDebug = true;
@@ -53,7 +53,7 @@ public class ResponseParser extends Module implements AgentEnhancer{
 
 
     @ACTION
-    public boolean registerAgent(String agentThingP){
+    public boolean registerAgent(String agentThingP) {
         log("Parsing new Agent Thing.");
         Thing agentThing = gson.fromJson(agentThingP, Thing.class);
         String viewUrl = agentThing.properties.stream()
@@ -89,26 +89,27 @@ public class ResponseParser extends Module implements AgentEnhancer{
         log("Parsing agent completed, agentBeliefs={}", Arrays.toString(agent.beliefs().beliefs().toArray()));
         return true;
     }
+
     @ACTION
     public boolean processMoves(String movesJson) {
-      //  log("Process moves movesJson={}", movesJson);
+        //  log("Process moves movesJson={}", movesJson);
         log("Process moves");
         AgentView view = gson.fromJson(movesJson, AgentView.class);
         setBelief("actualPosition_x_y", view.getAgentPosition().getX(), view.getAgentPosition().getY());
-        Map<String, Predicate> locationAgentBelief = getLocationsNodesInAgentBeliefs();
+        Map<String, Predicate> locationsAgentBelief = getLocationsNodesInAgentBeliefs();
         String actualBuildingSection = view.getAgentPosition().getSection();
         log("Agent belief actual building section={}", actualBuildingSection);
-        boolean isNewLocation = isNewLocation(actualBuildingSection, locationAgentBelief);
+        boolean isNewLocation = isNewLocation(actualBuildingSection, locationsAgentBelief);
         if (isNewLocation && !actualBuildingSection.equals("transit")) {
             log("New location and not transit");
             updateLocationBelief(actualBuildingSection);
             Map<String, Integer> locationToIdMap = new HashMap<>();
-            locationAgentBelief.forEach((k, v) -> {
+            locationsAgentBelief.forEach((k, v) -> {
                 locationToIdMap.put(k, Integer.parseInt(v.getTerm(0).toString()));
             });
             log("Location to id map created from agent beliefs, locationToIdMap={}",
                     printMap(locationToIdMap));
-            Predicate locationPredicateAgentBeliefs = locationAgentBelief.get(actualBuildingSection);
+            Predicate locationPredicateAgentBeliefs = locationsAgentBelief.get(actualBuildingSection);
             log("Location predicate in agent beliefs={}", locationPredicateAgentBeliefs != null ?
                     locationPredicateAgentBeliefs.toString() : "");
             AtomicInteger idCounter = new AtomicInteger(getLocationIdCounterValueAndRemoveBelif());
@@ -129,8 +130,6 @@ public class ResponseParser extends Module implements AgentEnhancer{
                 locationToIdMap.putIfAbsent(section, sectionId);
             });
             log("Id assigned to new location, locationToIdMap={}", printMap(locationToIdMap));
-
-
             List<BuildingNode> neighborsLocationNodesList = neighboursLocationsNodesSet.stream()
                     .map(st -> new BuildingNode(locationToIdMap.get(st), st, new ArrayList<>(), new ArrayList<>()))
                     .collect(Collectors.toList());
@@ -166,7 +165,7 @@ public class ResponseParser extends Module implements AgentEnhancer{
             agent.beliefs().addBelief(actualLocationPredicate);
 
             List<Predicate> newLocationThatAreNotInAgentBeliefs = neighborsLocationNodesList.stream()
-                    .filter(node -> locationAgentBelief.get(node.label) == null)
+                    .filter(node -> locationsAgentBelief.get(node.label) == null)
                     .map(node -> new Predicate("buildingNode_id_label_neightboursId_actions",
                             new Term[]{Primitive.newPrimitive((int) node.id),
                                     Primitive.newPrimitive((String) node.label),
@@ -220,7 +219,7 @@ public class ResponseParser extends Module implements AgentEnhancer{
         return agent;
     }
 
-    public static <K, V> String printMap(Map<K, V> map) {
+    private static <K, V> String printMap(Map<K, V> map) {
         String result = map.entrySet().stream()
                 .map(entry -> "Key: " + entry.getKey().toString() + ", Value: " + entry.getValue().toString())
                 .collect(Collectors.joining(", "));
@@ -295,8 +294,6 @@ public class ResponseParser extends Module implements AgentEnhancer{
                 .filter(p -> !p.getTerm(1).toString().equals("\"\""))//fix for quotes bug pepe
                 .collect(Collectors.toMap(p -> p.getTerm(1).toString().replace("\"", ""),
                         Function.identity()));
-//        log("Getting building node in agent beliefs, buildingNode={}",
-//                Arrays.toString(locationsNodesInAgentBeliefs.values().toArray()));
         return locationsNodesInAgentBeliefs;
     }
 

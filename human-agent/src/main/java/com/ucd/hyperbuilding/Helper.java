@@ -18,11 +18,6 @@ public class Helper extends Module implements AgentEnhancer {
         Predicate predicate = (Predicate) actionFormula;
         return predicate.termAt(0).toString().replace("\"", "");
     }
-//agent.beliefs().beliefs().stream()
-//                    .filter(formula -> formula instanceof Predicate)
-//            .map(formula -> (Predicate) formula)
-//            .filter(predicate -> predicate.predicate().equals("actualLocation"))
-//            .findFirst();
 
     @TERM
     public String getActionNameWithOutPath(Formula actionFormula) {
@@ -58,20 +53,6 @@ public class Helper extends Module implements AgentEnhancer {
     public boolean getNearNodeWithLowerAngleToTarget(int targetX, int targetY, int actualX, int actualY,
                                                      ActionParam<Integer> x,
                                                      ActionParam<Integer> y) {
-//        List<GridPoint> nearNodes = agent.beliefs().beliefs().stream()
-//                .filter(formula -> formula instanceof Predicate)
-//                .map(formula -> (Predicate) formula)
-//                .filter(predicate -> predicate.predicate().equals("move_x_y_isFree_location_haveAction_actions"))
-//                .map(p -> new GridPoint(Integer.parseInt(p.termAt(0).toString()),
-//                        Integer.parseInt(p.termAt(0).toString())))
-//                .collect(Collectors.toList());
-//
-//        HashMap<Double, GridPoint> angleToGridPointMap = new HashMap<Double, GridPoint>();
-//        nearNodes.forEach(g -> {
-//            double angle = calculateAngle(targetX - actualX, targetY - actualY,
-//                    g.x - actualX, g.y -actualY);
-//            angleToGridPointMap.put(angle,g);
-//        });
         Map<Double, GridPoint> angleToGridPointMap =
                 agent.beliefs().beliefs().stream()
                         .filter(formula -> formula instanceof Predicate)
@@ -102,7 +83,6 @@ public class Helper extends Module implements AgentEnhancer {
 
         return Math.toDegrees(angleRadians);
     }
-
 
     @ACTION
     public boolean getRandoActionFromList(ListTerm terms, ActionParam<Integer> x,

@@ -73,7 +73,6 @@ agent DiscoverAgent extends HumanBase {
         }
     }
 
-  
     //this is when agent is at a edge.
     // it move to a location if is near
     rule +!makeDecision():
@@ -110,7 +109,8 @@ agent DiscoverAgent extends HumanBase {
                 console.println("Discovering- map fully discover gointToLocation=" + gointToLocation);
                 -mainTarget_target_isSet("discover",false);
                 +mainTarget_target_isSet("discover",true);
-                console.println("Fully disover map");
+                console.println("Fully discover map");
+                system.sleep(10000);
                 debug.dumpBeliefs();
             }
             !update(true);
@@ -119,8 +119,8 @@ agent DiscoverAgent extends HumanBase {
      }
 
     rule +!makeDecision() : is("discovering")  & actualLocation(string location) &
-     subTargetGoingToLocations_location(string gointToLocation){
-        console.println("Discovering - Changing location gointToLocation="+ gointToLocation + ", location=" + location);
+     subTargetGoingToLocations_location(string goingToLocation){
+        console.println("Discovering - Changing location goingToLocation="+ goingToLocation + ", location=" + location);
         //means we reach point to move so need to change location 
         //need to move to outside local position
         query(moveUrl(string moveURL));
@@ -128,7 +128,7 @@ agent DiscoverAgent extends HumanBase {
         !update(true);
         wait(isUpdating(false));
         !get(moveURL, int code, string content);
-        console.println("responsecode=" + code);
+        console.println("response=" + code);
         parser.tryFindNodeNotInActualViewButInPossibleMove(content, int xOut, int yOut);
         console.println("x="+ xOut + ", y="+ yOut);
         if(xOut==-999){
@@ -144,7 +144,7 @@ agent DiscoverAgent extends HumanBase {
 
     rule +!performAction(string action): is("discovering")  & actionAvailable(string actionAvailable) & action== actionAvailable
     & actionUrl(string actionURL) & card(string cardId) {
-        console.println("Discovering - Perfoming action, action=" + action);
+        console.println("Discovering - Performing action, action=" + action);
         string json1 = "{'code':'"+ cardId + "' , 'action': '"+ action + " '}";
         !put(actionURL, json1, int code1, string content1);
         console.println("Card Reader Action Performed, responseCode="+ code1);
@@ -154,7 +154,7 @@ agent DiscoverAgent extends HumanBase {
     }
 
     rule +!makeDecision() : is("discovering") & actualLocation(string location){
-        console.println("Discovering Seraching for target- , location=" + location);
+        console.println("Discovering Searching for target- , location=" + location);
         query(buildingNode_id_label_neightboursId_actions(int idOnActual,
         location, list neighboursOnActual, list actionsOnActual));
         boolean isFound = false;
@@ -163,7 +163,7 @@ agent DiscoverAgent extends HumanBase {
             if(isFound==false){
             //if the neightbours list is empty it means it have been not visited.
                 if(prelude.size(neighbours) == 0){
-                    // console.println("found first to visite+" + label);
+                    // console.println("found first to visit=" + label);
                     string pathtoLocationToVisite = "pathto_" + label;
                     //  console.println("Finding location for path action=" +pathtoLocationToVisite);
                     // we now need to find the node with the action pathto
@@ -194,8 +194,7 @@ agent DiscoverAgent extends HumanBase {
                 console.println("Discovering - No node found - moving to a random location.");
                 !moveToRandom(location);
         }
-    } 
-
+    }
     
    rule +!makeDecision() : is("discovering") {
         console.println("Building is dicover");
@@ -225,7 +224,4 @@ agent DiscoverAgent extends HumanBase {
         !performAction();
     }
 
-     
-
-    
 }

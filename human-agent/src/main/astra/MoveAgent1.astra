@@ -1,7 +1,7 @@
 import mams.JSONConverter;
 import com.fasterxml.jackson.databind.JsonNode;
 
-agent MoveAgent extends DiscoverAgent {
+agent MoveAgent1 extends DiscoverAgent {
     module Console console;
     module System system;
     module Debug debug;

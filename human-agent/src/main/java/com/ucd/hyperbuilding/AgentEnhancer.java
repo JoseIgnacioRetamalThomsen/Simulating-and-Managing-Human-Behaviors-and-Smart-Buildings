@@ -7,7 +7,7 @@ import astra.term.Term;
 import java.util.Optional;
 
 public interface AgentEnhancer {
-    boolean isDebug = true;
+    boolean isDebug = false;
 
     Agent getAgent();
 
