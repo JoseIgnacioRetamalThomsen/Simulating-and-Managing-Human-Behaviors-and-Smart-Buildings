@@ -92,3 +92,5 @@ Assets/Plugins/Editor/JetBrains*
 # Maven
 log/
 target/
+
+build/
