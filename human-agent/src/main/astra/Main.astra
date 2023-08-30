@@ -6,17 +6,18 @@ agent Main extends mams.MAMSAgent {
 
 	rule +!main(list args) {
 		MAMSAgent::!setup();
-        system.createAgent("HumanBase", "DiscoverAgent");
-        system.setMainGoal("HumanBase", ["http://127.0.0.1:8080/hyperbuilding/agentbody","002","X"]);
 
-        // // debug.dumpBeliefs();
-        // system.createAgent("human2", "MoveAgent1");
-        // system.setMainGoal("human2", ["http://127.0.0.1:8080/hyperbuilding/agentbody","002","X"]);
+    system.createAgent("HumanBase", "DiscoverAgent");
+    system.setMainGoal("HumanBase", ["http://127.0.0.1:8080/hyperbuilding/agentbody","002"]);
+    system.sleep(10000);
+    debug.dumpBeliefs();
+    system.createAgent("human2", "PreloadedNavigatorAgent");
+    system.setMainGoal("human2", ["http://127.0.0.1:8080/hyperbuilding/agentbody","005", ["lobby","room4","sideentrance", "room4","room1","room3", "lobby" ,"reception","lobby","room4","sideentrance", "room4","room1","room3", "lobby"]]);
 
-        //      system.sleep(6000);
+        //
     
-        // system.createAgent("human3", "DiscoverAgent");
-        // system.setMainGoal("human3", ["http://localhost:8080/agent","X","X"]);
+        // system.createAgent("human3", "DiscoverNavigationAgent");
+        // system.setMainGoal("human3", ["http://127.0.0.1:8080/hyperbuilding/agentbody","003"]);
 
         //      system.sleep(6000);
     

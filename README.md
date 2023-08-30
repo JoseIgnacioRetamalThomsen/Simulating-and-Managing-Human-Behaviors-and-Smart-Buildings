@@ -21,7 +21,9 @@ Simulate and manage human behaviors in smart buildings.
 ### Services 
 
 Clone the project repository:
-`git clone https://github.com/JoseIgnacioRetamalThomsen/Simulating-and-Managing-Human-Behaviors-and-Smart-Buildings/tree/main`
+```bash
+git clone https://github.com/JoseIgnacioRetamalThomsen/Simulating-and-Managing-Human-Behaviors-and-Smart-Buildings/tree/main
+```
 
 #### Doors service
 
